@@ -25,10 +25,13 @@ def pickAddress():
         for index in range(len(row_data)):
             # 算出现次数
             now_str = row_data[index]
-            if isinstance(now_str, (float, int, bool)) or len(now_str) == 0 or now_str == 'TRUE' or now_str == 'FALSE':
+            if not isinstance(now_str, str):
                 print('有问题的地址:', now_str)
                 continue
             now_str = row_data[index].strip()
+            if len(now_str) == 0 or now_str == 'TRUE' or now_str == 'FALSE' or now_str.isspace():
+                print('有问题的字符串地址:', now_str)
+                continue
             if now_str not in current_dict.keys():
                 current_dict[now_str] = 1
             else:
