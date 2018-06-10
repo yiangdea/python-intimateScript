@@ -13,10 +13,9 @@ RANK = ['Ⅰ', 'ⅠⅠ', 'ⅠⅠⅠ', 'ⅠⅤ', 'Ⅴ', '劣Ⅴ1', '劣Ⅴ2', '�
 
 def dealLevel(level):
     if isinstance(level, str) is False:
-        level = 'Ⅴ'
-    level = level.replace('V', 'Ⅴ')
-    level = level.replace('I', 'Ⅰ')
-    level = level.replace('Ⅳ', 'ⅠⅤ')
+        level = ''
+        print('等级判断出错')
+    level = replaceStr(level)
     return level
 
 
@@ -38,25 +37,33 @@ def getAim(name, needLevel, levelTable):
     is_have, row = searchLevelTable(name, levelTable)
     row_data = levelTable.loc[row]
     if is_have is True and needLevel in RANK:
-        return row_data[RANK.index(needLevel)+1]
+        nongdu = row_data[RANK.index(needLevel) + 1]
+        print('名称', name, 'needLevel', needLevel,'levelTable', levelTable)
+        return nongdu
     print('判断目标浓度出错')
     return -10
+
+
+def replaceStr(orgStr):
+    orgStr = orgStr.replace('V', 'Ⅴ')
+    orgStr = orgStr.replace('I', 'Ⅰ')
+    orgStr = orgStr.replace('Ⅳ', 'ⅠⅤ')
+    orgStr = orgStr.replace('Ⅲ', 'ⅠⅠⅠ')
+    orgStr = orgStr.replace('Ⅱ', 'ⅠⅠ')
+    return orgStr
 
 
 def judgeIs(judge, standard):
     if isinstance(judge, str) == False or isinstance(standard, str) == False:
         print('输入类型有问题')
         return False, False
-    judge = judge.replace('V','Ⅴ')
-    judge = judge.replace('I', 'Ⅰ')
-    judge = judge.replace('Ⅳ', 'ⅠⅤ')
-    standard = standard.replace('V', 'Ⅴ')
-    standard = standard.replace('I', 'Ⅰ')
-    standard = standard.replace('Ⅳ', 'ⅠⅤ')
+    judge = replaceStr(judge)
+    standard = replaceStr(standard)
     if judge not in RANK or standard not in RANK:
         print('判断是否合格出错')
         return False, False
     else:
+        print('判断是否合格,','当前:',judge, '   标准:',standard)
         return RANK.index(judge) <= RANK.index(standard), True
 
 
@@ -65,12 +72,23 @@ def parseLevel():
     return total_data
 
 
+def judegeDataIsNotZero(data):
+    if isinstance(data, bool):
+        return True
+    if isinstance(data, float):
+        return data != 0
+    if isinstance(data, str):
+        return data != '0' or data != '0.0'
+
+
 def parse():
-    total_data = pd.read_csv('water.csv', header=0)
+    total_data = pd.read_csv('water.csv', header=1)
     list = []
     for data in total_data.itertuples(index=True, name='Pandas'):
-        if data[3] != '0' and (data[1] != '均值' and isinstance(data[1], str)):
+        if judegeDataIsNotZero(data[2]) and data[1] != '均值':
             list.append(data)
+        else:
+            print('拿掉了数据:', data)
     return list
 
 
@@ -79,7 +97,7 @@ if __name__ == '__main__':
     data_all = parse()
     df1_index = 0
     for row_data in data_all:
-        is_check_out, is_over = judgeIs(row_data[9], row_data[7])
+        is_check_out, is_success = judgeIs(row_data[9], row_data[7])
         df1.loc[df1_index] = [
             row_data[1],
             row_data[3],
@@ -90,7 +108,7 @@ if __name__ == '__main__':
             row_data[9],
             '参考均值',
             '是' if is_check_out else '否',
-            '成功' if is_over else '失败',
+            '成功' if is_success else '失败',
         ]
         df1_index = df1_index+1
         print('正在生成df1:%d', df1_index)
@@ -113,21 +131,24 @@ if __name__ == '__main__':
         32: '汞（mg/L)',
         34: '镉（mg/L)',
         36: '六价铬（mg/L)',
-        38: '氰化物（mg/L)',
-        40: '挥发酚（mg/L)',
-        42: '石油类（mg/L)',
-        44: '阴离子表面活性剂（mg/L)',
-        46: '硫化物（mg/L)',
+        38: '铅（mg/L)',
+        40: '氰化物（mg/L)',
+        42: '挥发酚（mg/L)',
+        44: '石油类（mg/L)',
+        46: '阴离子表面活性剂（mg/L)',
+        48: '硫化物（mg/L)',
     }
     for data in data_all:
         for index in range(len(data)):
             if index not in check_num_indexs.keys():
                 continue
-            is_check_out, is_over = judgeIs(data[9], data[7])
-            check_out_num = getAim(name=check_num_indexs[index], needLevel=data[7], levelTable=parseLevel())
+            is_check_out, is_over = judgeIs(judge=data[index+1], standard=data[7])
+            check_out_num = getAim(name=check_num_indexs[index],
+                                   needLevel=data[7],
+                                   levelTable=parseLevel())
             if is_check_out is False and check_out_num != -10:
                 df2.loc[df2_index] = [
-                    data[1],
+                    data[3],
                     data[5],
                     check_num_indexs[index],
                     data[index],
